@@ -1,6 +1,6 @@
 {
   "name": "Cooperative Manager",
-  "short_name": "Coop Manager",
+  "short_name": "Ak-Coop Manager",
   "description": "Members, savings, loans and real-time sync for your cooperative",
   "start_url": "./",
   "scope": "./",
