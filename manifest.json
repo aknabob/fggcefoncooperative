@@ -1,14 +1,11 @@
 {
-  "name": "Cooperative Manager",
-  "short_name": "Ak-Coop Manager",
-  "description": "Members, savings, loans and real-time sync for your cooperative",
+  "name": "AK-COOP Cooperative Manager",
+  "short_name": "AK-COOP",
+  "description": "Cooperative savings, loans and member management",
   "start_url": "./",
-  "scope": "./",
   "display": "standalone",
-  "orientation": "portrait-primary",
-  "background_color": "#f8fafc",
+  "background_color": "#ffffff",
   "theme_color": "#059669",
-  "lang": "en",
   "icons": [
     {
       "src": "icon-192.png",
@@ -22,6 +19,5 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
-  ],
-  "categories": ["finance", "business", "productivity"]
+  ]
 }
