@@ -1,6 +1,6 @@
 {
   "name": "AK-COOP Cooperative Manager",
-  "short_name": "AK-COOP",
+  "short_name": "AK-COOP Manager",
   "description": "Cooperative savings, loans and member management",
   "start_url": "./",
   "display": "standalone",
