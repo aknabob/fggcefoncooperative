@@ -588,7 +588,12 @@ window.__coopBuildPrintHtml = function(opts){
     var coopName = opts.coopName || "Cooperative Society";
     var title = (opts.title && String(opts.title).trim()) || "Cooperative Report";
     var notes = (opts.notes && String(opts.notes).trim()) || "";
-    var sections = opts.sections || ["members","savings","loans"];
+    var sections = Array.isArray(opts.sections) ? opts.sections.slice() : [];
+    if(!sections.length) sections = ["members","savings","loans"];
+    var hasMembers = sections.indexOf("members") >= 0;
+    var hasSavings = sections.indexOf("savings") >= 0;
+    var hasLoans = sections.indexOf("loans") >= 0;
+    var hasLoanDetails = sections.indexOf("loanDetails") >= 0;
     var showPhone = !!opts.showPhone;
     var showEmail = !!opts.showEmail;
     var onlyWithLoan = !!opts.onlyWithLoan;
@@ -613,68 +618,88 @@ window.__coopBuildPrintHtml = function(opts){
     var totalSav = 0, totalLoan = 0;
     list.forEach(function(m){ totalSav += Number(m.balance)||0; totalLoan += loanMap[m.id]||0; });
 
-    var css = "body{font-family:Inter,system-ui,sans-serif;color:#0f172a;margin:24px;font-size:12px}"+
+    var css = "body{font-family:Inter,system-ui,sans-serif;color:#0f172a;margin:24px;font-size:12px;padding-bottom:80px}"+
       "h1{font-size:18px;margin:0 0 4px}h2{font-size:14px;margin:18px 0 8px;border-bottom:2px solid #D4AF37;padding-bottom:4px}"+
       ".meta{color:#64748b;font-size:11px;margin-bottom:16px}.notes{background:#f8fafc;border:1px solid #e2e8f0;padding:10px;border-radius:8px;margin:12px 0;white-space:pre-wrap}"+
       "table{width:100%;border-collapse:collapse;margin-top:8px}th,td{border:1px solid #cbd5e1;padding:6px 8px;text-align:left}"+
       "th{background:#f1f5f9;font-size:11px;text-transform:uppercase;letter-spacing:.03em}td.num,th.num{text-align:right}"+
       ".tot{font-weight:700;background:#fef9c3}.footer{margin-top:24px;font-size:10px;color:#64748b;border-top:1px solid #e2e8f0;padding-top:8px}"+
-      "@media print{body{margin:12px}button{display:none!important}}";
+      "@media print{body{margin:12px} .no-print{display:none!important}}";
 
-    var html = "<!DOCTYPE html><html><head><meta charset='utf-8'><title>"+title.replace(/</g,"")+"</title><style>"+css+"</style></head><body>";
+    var html = "<!DOCTYPE html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>"+title.replace(/</g,"")+"</title><style>"+css+"</style></head><body>";
     html += "<h1>"+coopName.replace(/</g,"")+"</h1>";
     html += "<div style='font-size:15px;font-weight:600;margin-bottom:2px'>"+title.replace(/</g,"")+"</div>";
-    html += "<div class='meta'>Printed: "+today+" · Members shown: "+list.length+"</div>";
+    html += "<div class='meta'>Printed: "+today+" · Members shown: "+list.length;
+    var secLabels = [];
+    if(hasMembers) secLabels.push("Members");
+    if(hasSavings) secLabels.push("Savings");
+    if(hasLoans) secLabels.push("Loan balances");
+    if(hasLoanDetails) secLabels.push("Loan details");
+    if(secLabels.length) html += " · Sections: "+secLabels.join(", ");
+    html += "</div>";
     if(notes) html += "<div class='notes'><strong>Notes:</strong><br>"+notes.replace(/</g,"&lt;")+"</div>";
 
-    // Summary
-    if(sections.indexOf("summary")>=0 || sections.indexOf("members")>=0 || sections.indexOf("savings")>=0 || sections.indexOf("loans")>=0){
+    // Summary — only selected metrics
+    if(hasMembers || hasSavings || hasLoans){
       html += "<h2>Summary</h2><table><tr><th>Item</th><th class='num'>Amount / Count</th></tr>";
-      html += "<tr><td>Total members (filtered)</td><td class='num'>"+list.length+"</td></tr>";
-      if(sections.indexOf("savings")>=0 || sections.indexOf("members")>=0)
-        html += "<tr><td>Total savings</td><td class='num'>"+money(totalSav)+"</td></tr>";
-      if(sections.indexOf("loans")>=0 || sections.indexOf("members")>=0)
-        html += "<tr><td>Total loan balances</td><td class='num'>"+money(totalLoan)+"</td></tr>";
+      if(hasMembers) html += "<tr><td>Total members (filtered)</td><td class='num'>"+list.length+"</td></tr>";
+      if(hasSavings) html += "<tr><td>Total savings</td><td class='num'>"+money(totalSav)+"</td></tr>";
+      if(hasLoans) html += "<tr><td>Total loan balances</td><td class='num'>"+money(totalLoan)+"</td></tr>";
       html += "</table>";
     }
 
-    if(sections.indexOf("members")>=0 || sections.indexOf("savings")>=0 || sections.indexOf("loans")>=0){
+    // Members table — only columns for selected sections
+    // Show table if any of members/savings/loans selected
+    if(hasMembers || hasSavings || hasLoans){
+      var colCount = 3; // #, Name, ID
       html += "<h2>Members Report</h2><table><thead><tr>";
       html += "<th>#</th><th>Name</th><th>ID</th>";
-      if(showPhone) html += "<th>Phone</th>";
-      if(showEmail) html += "<th>Email</th>";
-      if(sections.indexOf("savings")>=0 || sections.indexOf("members")>=0) html += "<th class='num'>Savings</th>";
-      if(sections.indexOf("loans")>=0 || sections.indexOf("members")>=0) html += "<th class='num'>Loan Balance</th>";
+      if(showPhone){ html += "<th>Phone</th>"; colCount++; }
+      if(showEmail){ html += "<th>Email</th>"; colCount++; }
+      if(hasSavings){ html += "<th class='num'>Savings</th>"; }
+      if(hasLoans){ html += "<th class='num'>Loan Balance</th>"; }
       html += "</tr></thead><tbody>";
       list.forEach(function(m,i){
         html += "<tr><td>"+(i+1)+"</td><td>"+String(m.name||"").replace(/</g,"")+"</td><td>"+String(m.id||"")+"</td>";
         if(showPhone) html += "<td>"+String(m.phone||"—")+"</td>";
         if(showEmail) html += "<td>"+String(m.email||"—")+"</td>";
-        if(sections.indexOf("savings")>=0 || sections.indexOf("members")>=0) html += "<td class='num'>"+money(m.balance)+"</td>";
-        if(sections.indexOf("loans")>=0 || sections.indexOf("members")>=0) html += "<td class='num'>"+money(loanMap[m.id]||0)+"</td>";
+        if(hasSavings) html += "<td class='num'>"+money(m.balance)+"</td>";
+        if(hasLoans) html += "<td class='num'>"+money(loanMap[m.id]||0)+"</td>";
         html += "</tr>";
       });
-      html += "<tr class='tot'><td colspan='"+(3+(showPhone?1:0)+(showEmail?1:0))+"'>TOTAL</td>";
-      if(sections.indexOf("savings")>=0 || sections.indexOf("members")>=0) html += "<td class='num'>"+money(totalSav)+"</td>";
-      if(sections.indexOf("loans")>=0 || sections.indexOf("members")>=0) html += "<td class='num'>"+money(totalLoan)+"</td>";
+      html += "<tr class='tot'><td colspan='"+colCount+"'>TOTAL</td>";
+      if(hasSavings) html += "<td class='num'>"+money(totalSav)+"</td>";
+      if(hasLoans) html += "<td class='num'>"+money(totalLoan)+"</td>";
       html += "</tr></tbody></table>";
     }
 
-    if(sections.indexOf("loanDetails")>=0){
+    // Loan details — only if checked
+    if(hasLoanDetails){
       var activeLoans = (loans||[]).filter(function(L){
         var st=String(L.status||"").toLowerCase();
         return st==="active"||st==="approved"||st==="pending";
       }).sort(function(a,b){return String(a.memberName||"").localeCompare(String(b.memberName||""));});
       html += "<h2>Loan Details</h2><table><thead><tr><th>#</th><th>Member</th><th>Loan ID</th><th>Status</th><th class='num'>Amount</th><th class='num'>Paid</th><th class='num'>Balance</th><th>Purpose</th></tr></thead><tbody>";
+      if(!activeLoans.length){
+        html += "<tr><td colspan='8' style='text-align:center;color:#64748b'>No active loans</td></tr>";
+      }
       activeLoans.forEach(function(L,i){
         var bal=Math.max(0,(Number(L.amount)||0)-(Number(L.totalPaid)||0));
         html += "<tr><td>"+(i+1)+"</td><td>"+String(L.memberName||"").replace(/</g,"")+"</td><td>"+String(L.id||"")+"</td><td>"+String(L.status||"")+"</td>";
-        html += "<td class='num'>"+money(L.amount)+"</td><td class='num'>"+money(L.totalPaid)+"</td><td class='num'>"+money(bal)+"</td><td>"+String(L.purpose||"")+"</td></tr>";
+        html += "<td class='num'>"+money(L.amount)+"</td><td class='num'>"+money(L.totalPaid)+"</td><td class='num'>"+money(bal)+"</td><td>"+String(L.purpose||"").replace(/</g,"")+"</td></tr>";
       });
       html += "</tbody></table>";
     }
 
+    if(!hasMembers && !hasSavings && !hasLoans && !hasLoanDetails){
+      html += "<p style='color:#64748b;margin-top:24px'>No sections selected. Go back and choose what to include.</p>";
+    }
+
     html += "<div class='footer'>"+coopName.replace(/</g,"")+" · Generated by AK-COOP · "+today+"</div>";
+    html += "<div class='no-print' style='position:fixed;bottom:16px;left:0;right:0;display:flex;justify-content:center;gap:8px;z-index:99;padding:0 12px'>";
+    html += "<button onclick='window.print()' style='padding:12px 28px;border:none;border-radius:999px;background:#059669;color:#fff;font-weight:700;font-size:15px;box-shadow:0 8px 24px rgba(16,185,129,.35)'>Print / Save PDF</button>";
+    html += "<button onclick=\"try{var r=sessionStorage.getItem('coop_print_return');if(r){location.href=r;}else if(history.length>1){history.back();}else{window.close();}}catch(e){history.back()}\" style='padding:12px 20px;border:1px solid #e2e8f0;border-radius:999px;background:#fff;font-weight:600;font-size:14px'>Back to app</button>";
+    html += "</div>";
     html += "</body></html>";
     return html;
   }catch(err){
@@ -682,14 +707,48 @@ window.__coopBuildPrintHtml = function(opts){
     return "<html><body><p>Print failed</p></body></html>";
   }
 };
+
 window.__coopPrint = function(opts){
-  var html = window.__coopBuildPrintHtml(opts);
-  var w = window.open("","_blank","noopener,noreferrer,width=900,height=700");
-  if(!w){ alert("Please allow pop-ups to print"); return; }
-  w.document.open();
-  w.document.write(html);
-  w.document.close();
-  setTimeout(function(){ try{ w.focus(); w.print(); }catch(e){} }, 350);
+  try {
+    var html = window.__coopBuildPrintHtml(opts);
+    var blob = new Blob([html], { type: "text/html;charset=utf-8" });
+    var url = URL.createObjectURL(blob);
+
+    // 1) Try hidden iframe print (desktop-friendly)
+    var isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "");
+    if (!isMobile) {
+      var old = document.getElementById("coop-print-frame");
+      if (old) old.remove();
+      var frame = document.createElement("iframe");
+      frame.id = "coop-print-frame";
+      frame.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;opacity:0;";
+      frame.src = url;
+      document.body.appendChild(frame);
+      frame.onload = function(){
+        setTimeout(function(){
+          try {
+            frame.contentWindow.focus();
+            frame.contentWindow.print();
+          } catch (e) {
+            window.open(url, "_blank");
+          }
+          setTimeout(function(){
+            try { frame.remove(); } catch (e2) {}
+            try { URL.revokeObjectURL(url); } catch (e3) {}
+          }, 3000);
+        }, 300);
+      };
+      return;
+    }
+
+    // 2) Mobile: open report in same tab (avoids blocked about:blank)
+    // Save return URL so user can come back
+    try { sessionStorage.setItem("coop_print_return", location.href); } catch (e) {}
+    location.href = url;
+  } catch (err) {
+    console.error(err);
+    alert("Print failed. " + (err && err.message ? err.message : ""));
+  }
 };
 </script>
 
